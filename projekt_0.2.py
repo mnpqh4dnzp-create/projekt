@@ -1,3 +1,6 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
 with open("C:\\Users\\MiQuRs\\source\\repos\\TEST\\TEST\\probki.txt", encoding="utf-8") as f:
     lines = f.readlines()
 
@@ -152,8 +155,6 @@ for typ, lista in listy_mas_probki_do_mas_azbestu.items():
 
 #Pandas
 
-import pandas as pd
-
 df = pd.DataFrame(probki, columns=["masa_probki", "masa_azbestu", "material", "typ_azbestu"])
 
 
@@ -196,9 +197,7 @@ print("\nProcentowy udział azbestu w próbce:\n")
 print(df[["masa_probki", "masa_azbestu", "procent_azbestu"]])
 
 
-# Matplotlib, histogramy 
-
-import matplotlib.pyplot as plt
+# Matplotlib, histogramy
 
 # Masy próbki 
 plt.figure()
