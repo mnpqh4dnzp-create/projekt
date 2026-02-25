@@ -1,12 +1,5 @@
-import GUI
-import sys
-from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QComboBox, QPushButton, QTableWidget,
-    QTableWidgetItem, QLineEdit
-)
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
 with open("probki.txt", encoding="utf-8") as f:
     lines = f.readlines()
