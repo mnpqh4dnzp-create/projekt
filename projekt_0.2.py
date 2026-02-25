@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-#
+
 with open("C:\\Users\\MiQuRs\\source\\repos\\TEST\\TEST\\probki.txt", encoding="utf-8") as f:
     lines = f.readlines()
 
