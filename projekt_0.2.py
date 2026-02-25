@@ -1,7 +1,14 @@
+import GUI
+import sys
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QComboBox, QPushButton, QTableWidget,
+    QTableWidgetItem, QLineEdit
+)
 import pandas as pd
 import matplotlib.pyplot as plt
 
-with open("C:\\Users\\MiQuRs\\source\\repos\\TEST\\TEST\\probki.txt", encoding="utf-8") as f:
+with open("probki.txt", encoding="utf-8") as f:
     lines = f.readlines()
 
 dane = lines[1:]
@@ -38,7 +45,7 @@ lbd = [p for p in probki if p[2] == "LBD"]
 ac = [p for p in probki if p[2] == "AC"]
 wp = [p for p in probki if p[2] == "WP"]
 
-# Typy azbestu 
+# Typy azbestu
 ch = [p for p in probki if "CH" in p[3]]
 am = [p for p in probki if "AM" in p[3]]
 cr = [p for p in probki if "CR" in p[3]]
@@ -93,7 +100,7 @@ for typ, lista in lista_typ.items():
 lista_masa_probki_material = {}
 
 for p in probki:
-    material = p[2]     
+    material = p[2]
     masa_probki = p[0]
 
     if material not in lista_masa_probki_material:
@@ -112,7 +119,7 @@ lista_masa_probki_typ = {}
 
 for p in probki:
     masa_probki = p[0]
-    typy = p[3].split(",")  
+    typy = p[3].split(",")
 
     for typ in typy:
         typ = typ.strip()
@@ -150,7 +157,7 @@ print("\nListy mas próbki do mas azbestu wg typu:\n")
 
 for typ, lista in listy_mas_probki_do_mas_azbestu.items():
     print(typ, "->", lista)
-     
+
 
 
 #Pandas
@@ -199,7 +206,7 @@ print(df[["masa_probki", "masa_azbestu", "procent_azbestu"]])
 
 # Matplotlib, histogramy
 
-# Masy próbki 
+# Masy próbki
 plt.figure()
 plt.hist(df["masa_probki"], bins=10)
 plt.xlabel("Masa próbki")
@@ -235,7 +242,7 @@ plt.title("Histogram masy azbestu dla materiału AC")
 plt.show()
 
 
-#Wykres rozrzutu masa próbki vs masa azbestu 
+#Wykres rozrzutu masa próbki vs masa azbestu
 
 plt.figure()
 plt.scatter(df["masa_probki"], df["masa_azbestu"])
@@ -257,4 +264,4 @@ plt.show()
 
 
 
-   
+
