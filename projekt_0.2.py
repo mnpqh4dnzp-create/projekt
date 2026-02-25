@@ -1,4 +1,4 @@
-with open("probki.txt", encoding="utf-8") as f:
+with open("C:\\Users\\MiQuRs\\source\\repos\\TEST\\TEST\\probki.txt", encoding="utf-8") as f:
     lines = f.readlines()
 
 dane = lines[1:]
