@@ -11,8 +11,74 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 import pandas as pd
+from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+from tooltips import TOOLTIPS
 
 class Okno(QWidget):
+    def import_csv(self):
+        sciezka, _ = QFileDialog.getOpenFileName(
+            self,
+            "Wybierz plik CSV",
+            "",
+            "CSV Files (*.csv *.txt)"
+        )
+
+        if not sciezka:
+            return
+
+        try:
+            # Wczytanie CSV
+            df = pd.read_csv(
+                sciezka,
+                sep=r'\s+',  # spacje jako separator
+                engine='python',
+                names=["masa_probki", "masa_azbestu", "material", "typ_azbestu"],  # wymuszenie 4 kolumn
+                skiprows=1  # pomija nagłówek w pliku
+            )
+
+            # Zamiana przecinków w liczbach
+            df["masa_probki"] = df["masa_probki"].astype(str).str.replace(",", ".").astype(float)
+            df["masa_azbestu"] = df["masa_azbestu"].astype(str).str.replace(",", ".").astype(float)
+
+            # Procent azbestu
+            df["procent_azbestu"] = (df["masa_azbestu"] / df["masa_probki"] * 100).round(4)
+
+            self.df = df
+            self.dane_widoczne = df.copy()
+
+            # --- TU WSTAWIAMY FRAGMENT USTAWIANIA LIST FILTRÓW ---
+            if not df.empty:
+                # Materiały
+                self.lista_material.clear()
+                for m in sorted(df["material"].unique()):
+                    item = QListWidgetItem(m)
+                    item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                    item.setCheckState(Qt.Unchecked)
+                    if m in TOOLTIPS:
+                        item.setToolTip(TOOLTIPS[m])
+                    self.lista_material.addItem(item)
+
+                # Typy azbestu
+                self.lista_typ.clear()
+                typy = df["typ_azbestu"].str.split(",").explode().str.strip()
+                typy = typy[typy != ""].unique()
+                for t in sorted(typy):
+                    item = QListWidgetItem(t)
+                    item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                    item.setCheckState(Qt.Unchecked)
+                    if t in TOOLTIPS:
+                        item.setToolTip(TOOLTIPS[t])
+                    self.lista_typ.addItem(item)
+            # --- KONIEC FRAGMENTU ---
+
+            # Załaduj tabelę i statystyki
+            self.zaladuj_tabele(df)
+            self.aktualizuj_statystyki(df)
+
+        except Exception as e:
+            QMessageBox.warning(self, "Błąd importu", str(e))
+
     def pokaz_tylko_zaznaczone(self, lista_widget):
         for i in range(lista_widget.count()):
             item = lista_widget.item(i)
@@ -44,6 +110,10 @@ class Okno(QWidget):
             item = QListWidgetItem(m)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked)
+
+            if m in TOOLTIPS:
+                item.setToolTip(TOOLTIPS[m])
+
             self.lista_material.addItem(item)
 
         material_layout.addWidget(self.lista_material)
@@ -66,6 +136,10 @@ class Okno(QWidget):
             item = QListWidgetItem(t)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked)
+
+            if t in TOOLTIPS:
+                item.setToolTip(TOOLTIPS[t])
+
             self.lista_typ.addItem(item)
 
         typ_layout.addWidget(self.lista_typ)
@@ -97,6 +171,10 @@ class Okno(QWidget):
         filters_layout.addLayout(zakres_layout)
 
         main_layout.addLayout(filters_layout)
+
+        self.btn_import = QPushButton("Import CSV")
+        self.btn_import.clicked.connect(self.import_csv)
+        main_layout.addWidget(self.btn_import)
 
 
         self.btn_filtruj = QPushButton("Filtruj")
@@ -266,11 +344,11 @@ class Okno(QWidget):
         for index, row in stats.iterrows():
             tekst += f"""
     {index}
-    Średnia: {row['mean']:.2f}
-    Odchylenie std: {row['std']:.2f}
-    Min: {row['min']:.2f}
-    Max: {row['max']:.2f}
-    Mediana: {dane[index].median():.2f}
+    Średnia: {row['mean']:.4f} g
+    Odchylenie std: {row['std']:.4f} g
+    Min: {row['min']:.4f} g
+    Max: {row['max']:.4f} g
+    Mediana: {dane[index].median():.4f} g
     -----------------------
     """
 
