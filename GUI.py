@@ -3,16 +3,12 @@ from PySide6.QtWidgets import (
     QLabel, QPushButton,
     QTableWidget, QTableWidgetItem,
     QLineEdit, QListWidget, QListWidgetItem,
-    QMessageBox, QComboBox, QSplitter
+    QMessageBox, QComboBox, QSplitter, QFileDialog
 )
 from PySide6.QtCore import Qt
-
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-
 import pandas as pd
-from PySide6.QtWidgets import QFileDialog, QMessageBox
-
 from tooltips import TOOLTIPS
 
 class Okno(QWidget):
@@ -28,40 +24,34 @@ class Okno(QWidget):
             return
 
         try:
-            # Wczytanie CSV
             df = pd.read_csv(
                 sciezka,
-                sep=r'\s+',  # spacje jako separator
+                sep=r'\s+',
                 engine='python',
-                names=["masa_probki", "masa_azbestu", "material", "typ_azbestu"],  # wymuszenie 4 kolumn
-                skiprows=1  # pomija nagłówek w pliku
+                names=["masa próbki", "masa azbestu", "materiał", "typ azbestu"],
+                skiprows=1
             )
 
-            # Zamiana przecinków w liczbach
-            df["masa_probki"] = df["masa_probki"].astype(str).str.replace(",", ".").astype(float)
-            df["masa_azbestu"] = df["masa_azbestu"].astype(str).str.replace(",", ".").astype(float)
+            df["masa próbki"] = df["masa próbki"].astype(str).str.replace(",", ".").astype(float)
+            df["masa azbestu"] = df["masa azbestu"].astype(str).str.replace(",", ".").astype(float)
 
-            # Procent azbestu
-            df["procent_azbestu"] = (df["masa_azbestu"] / df["masa_probki"] * 100).round(4)
+            df["procentowa zawartość azbestu"] = (df["masa azbestu"] / df["masa próbki"] * 100).round(4)
 
             self.df = df
             self.dane_widoczne = df.copy()
 
-            # --- TU WSTAWIAMY FRAGMENT USTAWIANIA LIST FILTRÓW ---
             if not df.empty:
-                # Materiały
-                self.lista_material.clear()
-                for m in sorted(df["material"].unique()):
+                self.lista_materiał.clear()
+                for m in sorted(df["materiał"].unique()):
                     item = QListWidgetItem(m)
                     item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
                     item.setCheckState(Qt.Unchecked)
                     if m in TOOLTIPS:
                         item.setToolTip(TOOLTIPS[m])
-                    self.lista_material.addItem(item)
+                    self.lista_materiał.addItem(item)
 
-                # Typy azbestu
                 self.lista_typ.clear()
-                typy = df["typ_azbestu"].str.split(",").explode().str.strip()
+                typy = df["typ azbestu"].str.split(",").explode().str.strip()
                 typy = typy[typy != ""].unique()
                 for t in sorted(typy):
                     item = QListWidgetItem(t)
@@ -70,9 +60,7 @@ class Okno(QWidget):
                     if t in TOOLTIPS:
                         item.setToolTip(TOOLTIPS[t])
                     self.lista_typ.addItem(item)
-            # --- KONIEC FRAGMENTU ---
 
-            # Załaduj tabelę i statystyki
             self.zaladuj_tabele(df)
             self.aktualizuj_statystyki(df)
 
@@ -102,11 +90,11 @@ class Okno(QWidget):
 
         filters_layout = QHBoxLayout()
 
-        material_layout = QVBoxLayout()
-        material_layout.addWidget(QLabel("Materiał"))
+        materiał_layout = QVBoxLayout()
+        materiał_layout.addWidget(QLabel("Materiał"))
 
-        self.lista_material = QListWidget()
-        for m in sorted(self.df["material"].unique()):
+        self.lista_materiał = QListWidget()
+        for m in sorted(self.df["materiał"].unique()):
             item = QListWidgetItem(m)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked)
@@ -114,17 +102,17 @@ class Okno(QWidget):
             if m in TOOLTIPS:
                 item.setToolTip(TOOLTIPS[m])
 
-            self.lista_material.addItem(item)
+            self.lista_materiał.addItem(item)
 
-        material_layout.addWidget(self.lista_material)
-        filters_layout.addLayout(material_layout)
+        materiał_layout.addWidget(self.lista_materiał)
+        filters_layout.addLayout(materiał_layout)
 
         typ_layout = QVBoxLayout()
         typ_layout.addWidget(QLabel("Typ azbestu"))
 
         self.lista_typ = QListWidget()
         typy = (
-            self.df["typ_azbestu"]
+            self.df["typ azbestu"]
             .str.split(",")
             .explode()
             .str.strip()
@@ -202,7 +190,7 @@ class Okno(QWidget):
         self.combo_wykres.addItems([
             "Scatter (masa vs procent)",
             "Histogram masa próbki",
-            "Histogram procent azbestu",
+            "Histogram procentowa zawartość azbestu",
             "Barplot - materiał vs średni % azbestu"
         ])
 
@@ -241,7 +229,6 @@ class Okno(QWidget):
         self.zaladuj_tabele(self.df)
         self.aktualizuj_statystyki(self.df)
 
-
     def zaladuj_tabele(self, dane):
         self.tabela.setRowCount(len(dane))
         self.tabela.setColumnCount(len(dane.columns))
@@ -254,21 +241,18 @@ class Okno(QWidget):
                     QTableWidgetItem(str(dane.iloc[i, j]))
                 )
 
-
     def filtruj(self):
         dane = self.df.copy()
 
-        # Materiały
-        wybrane_materialy = [
-            self.lista_material.item(i).text()
-            for i in range(self.lista_material.count())
-            if self.lista_material.item(i).checkState() == Qt.Checked
+        wybrane_materiały = [
+            self.lista_materiał.item(i).text()
+            for i in range(self.lista_materiał.count())
+            if self.lista_materiał.item(i).checkState() == Qt.Checked
         ]
 
-        if wybrane_materialy:
-            dane = dane[dane["material"].isin(wybrane_materialy)]
+        if wybrane_materiały:
+            dane = dane[dane["materiał"].isin(wybrane_materiały)]
 
-        # Typy azbestu
         wybrane_typy = [
             self.lista_typ.item(i).text()
             for i in range(self.lista_typ.count())
@@ -278,27 +262,25 @@ class Okno(QWidget):
         if len(wybrane_typy) > 0:
             wybrane_set = set(wybrane_typy)
 
-            maska = dane["typ_azbestu"].str.split(",").apply(
+            maska = dane["typ azbestu"].str.split(",").apply(
                 lambda lista: set(t.strip() for t in lista if t.strip()) == wybrane_set
             )
 
             dane = dane[maska]
 
-        # Zakres masy
         try:
             if self.min_masa.text():
-                dane = dane[dane["masa_probki"] >= float(self.min_masa.text())]
+                dane = dane[dane["masa próbki"] >= float(self.min_masa.text())]
             if self.max_masa.text():
-                dane = dane[dane["masa_probki"] <= float(self.max_masa.text())]
+                dane = dane[dane["masa próbki"] <= float(self.max_masa.text())]
         except ValueError:
             pass
 
-        # Zakres procentu
         try:
             if self.min_proc.text():
-                dane = dane[dane["procent_azbestu"] >= float(self.min_proc.text())]
+                dane = dane[dane["procentowa zawartość azbestu"] >= float(self.min_proc.text())]
             if self.max_proc.text():
-                dane = dane[dane["procent_azbestu"] <= float(self.max_proc.text())]
+                dane = dane[dane["procentowa zawartość azbestu"] <= float(self.max_proc.text())]
         except ValueError:
             pass
 
@@ -316,8 +298,8 @@ class Okno(QWidget):
 
     def wyczysc_filtry(self):
 
-        for i in range(self.lista_material.count()):
-            self.lista_material.item(i).setCheckState(Qt.Unchecked)
+        for i in range(self.lista_materiał.count()):
+            self.lista_materiał.item(i).setCheckState(Qt.Unchecked)
 
         for i in range(self.lista_typ.count()):
             self.lista_typ.item(i).setCheckState(Qt.Unchecked)
@@ -331,13 +313,12 @@ class Okno(QWidget):
         self.zaladuj_tabele(self.dane_widoczne)
         self.aktualizuj_statystyki(self.dane_widoczne)
 
-
     def aktualizuj_statystyki(self, dane):
         if dane.empty:
             self.statystyka_label.setText("Brak danych")
             return
 
-        stats = dane[["masa_probki", "procent_azbestu"]].describe().T
+        stats = dane[["masa próbki", "procentowa zawartość azbestu"]].describe().T
 
         tekst = ""
 
@@ -353,6 +334,49 @@ class Okno(QWidget):
     """
 
         self.statystyka_label.setText(tekst)
+
+    def generuj_opis_statystyczny(self, df):
+
+        if df.empty:
+            return "Brak danych do analizy."
+
+        n = len(df)
+
+        masa_mean = df["masa próbki"].mean()
+        masa_std = df["masa próbki"].std()
+        masa_min = df["masa próbki"].min()
+        masa_max = df["masa próbki"].max()
+
+        proc_mean = df["procentowa zawartość azbestu"].mean()
+        proc_std = df["procentowa zawartość azbestu"].std()
+        proc_min = df["procentowa zawartość azbestu"].min()
+        proc_max = df["procentowa zawartość azbestu"].max()
+
+        cv = proc_std / proc_mean * 100 if proc_mean != 0 else 0
+
+        if cv < 10:
+            zmiennosc = "niską zmienność wyników"
+        elif cv < 30:
+            zmiennosc = "umiarkowaną zmienność wyników"
+        else:
+            zmiennosc = "wysoką zmienność wyników"
+
+        opis = f"""
+    INTERPRETACJA WYNIKÓW
+    ------------------------------
+
+    Analizie poddano {n} próbek materiałów zawierających azbest.
+
+    Średnia masa próbki wynosiła {masa_mean:.4f} g (SD = {masa_std:.4f} g),
+    przy zakresie od {masa_min:.4f} g do {masa_max:.4f} g.
+
+    Średnia procentowa zawartość azbestu wynosiła {proc_mean:.4f} %
+    (SD = {proc_std:.4f} %), przy wartościach od {proc_min:.4f} % do {proc_max:.4f} %.
+
+    Analiza zmienności wskazuje na {zmiennosc}.
+    """
+
+        return opis
 
     def generuj_wykres(self):
         if self.tabela.rowCount() == 0:
@@ -371,9 +395,9 @@ class Okno(QWidget):
         ]
 
         try:
-            idx_masa = kolumny.index("masa_probki")
-            idx_proc = kolumny.index("procent_azbestu")
-            idx_material = kolumny.index("material")
+            idx_masa = kolumny.index("masa próbki")
+            idx_proc = kolumny.index("procentowa zawartość azbestu")
+            idx_materiał = kolumny.index("materiał")
         except ValueError:
             QMessageBox.warning(self, "Błąd", "Brak wymaganych kolumn w tabeli.")
             return
@@ -382,11 +406,11 @@ class Okno(QWidget):
             try:
                 masa = float(self.tabela.item(row, idx_masa).text())
                 proc = float(self.tabela.item(row, idx_proc).text())
-                material = self.tabela.item(row, idx_material).text()
+                materiał = self.tabela.item(row, idx_materiał).text()
 
                 masy.append(masa)
                 procenty.append(proc)
-                materiały.append(material)
+                materiały.append(materiał)
             except (ValueError, AttributeError):
                 continue
 
@@ -399,41 +423,41 @@ class Okno(QWidget):
         # Scatter
         if wybor == "Scatter (masa vs procent)":
             plt.scatter(masy, procenty)
-            plt.xlabel("masa_probki")
-            plt.ylabel("procent_azbestu")
+            plt.xlabel("masa próbki (g)")
+            plt.ylabel("procentowa zawartość azbestu")
             plt.title("Zależność masy próbki od procentu azbestu")
             plt.grid(True)
 
         # Histogram masa
         elif wybor == "Histogram masa próbki":
             plt.hist(masy, bins=20)
-            plt.xlabel("Masa próbki")
+            plt.xlabel("Masa próbki (g)")
             plt.ylabel("Liczba próbek")
             plt.title("Histogram masy próbek")
             plt.grid(True)
 
         # Histogram procent
-        elif wybor == "Histogram procent azbestu":
+        elif wybor == "Histogram procentowa zawartość azbestu":
             plt.hist(procenty, bins=20)
-            plt.xlabel("Procent azbestu")
+            plt.xlabel("procentowa zawartość azbestu")
             plt.ylabel("Liczba próbek")
             plt.title("Histogram procentowej zawartości azbestu")
             plt.grid(True)
 
-        # Barplot materiał → średni procent azbestu
+        # Barplot materiał → średni procentowa zawartość azbestu
         elif wybor == "Barplot - materiał vs średni % azbestu":
             df_temp = self.df.copy()
 
             avg_data = (
-                df_temp.groupby("material")["procent_azbestu"]
+                df_temp.groupby("materiał")["procentowa zawartość azbestu"]
                 .mean()
                 .sort_values()
             )
 
             plt.bar(avg_data.index, avg_data.values)
             plt.xlabel("Materiał")
-            plt.ylabel("Średni procent azbestu")
-            plt.title("Średni procent azbestu według materiału")
+            plt.ylabel("Średni procentowa zawartość azbestu")
+            plt.title("Średni procentowa zawartość azbestu według materiału")
             plt.xticks(rotation=45)
             plt.grid(True)
 
@@ -441,6 +465,7 @@ class Okno(QWidget):
         plt.show()
 
     def eksport_csv(self):
+
         if self.tabela.rowCount() == 0:
             QMessageBox.warning(self, "Błąd", "Brak danych do eksportu.")
             return
@@ -455,15 +480,68 @@ class Okno(QWidget):
             except:
                 continue
 
-        df_stats = pd.DataFrame(dane, columns=["masa_probki", "procent_azbestu"])
+        if not dane:
+            QMessageBox.warning(self, "Błąd", "Brak poprawnych danych.")
+            return
 
-        stats = df_stats.describe().T
+        df = self.dane_widoczne.copy()
 
-        stats["mediana"] = df_stats.median()
+        stats = {
+            "Masa próbki (g)": [
+                df["masa próbki"].mean(),
+                df["masa próbki"].std(),
+                df["masa próbki"].min(),
+                df["masa próbki"].max(),
+                df["masa próbki"].median(),
+                len(df)
+            ],
+            "Zawartość azbestu (%)": [
+                df["procentowa zawartość azbestu"].mean(),
+                df["procentowa zawartość azbestu"].std(),
+                df["procentowa zawartość azbestu"].min(),
+                df["procentowa zawartość azbestu"].max(),
+                df["procentowa zawartość azbestu"].median(),
+                len(df)
+            ]
+        }
 
-        stats.to_csv("statystyki.csv", encoding="utf-8")
+        raport = "RAPORT STATYSTYCZNY ANALIZY AZBESTU\n\n"
+        raport += f"{'Parametr':<25}{'Średnia':<10}{'Odchylenie std':<18}{'Min':<10}{'Max':<10}{'Mediana':<10}{'Liczba próbek'}\n"
+        raport += "-" * 80 + "\n"
 
-        QMessageBox.information(self, "OK", "Eksport statystyk do CSV zakończony.")
+        for parametr, values in stats.items():
+            raport += (
+                f"{parametr:<25}"
+                f"{values[0]:<10.4f}"
+                f"{values[1]:<18.4f}"
+                f"{values[2]:<10.4f}"
+                f"{values[3]:<10.4f}"
+                f"{values[4]:<10.4f}"
+                f"{values[5]}\n"
+            )
+
+        raport += "\n"
+
+        opis = self.generuj_opis_statystyczny(df)
+
+        raport += opis
+
+        with open("raport_statystyczny.txt", "w", encoding="utf-8") as f:
+            f.write(raport)
+
+        csv_df = pd.DataFrame({
+            "Parametr": list(stats.keys()),
+            "Średnia": [stats[k][0] for k in stats],
+            "Odchylenie std": [stats[k][1] for k in stats],
+            "Min": [stats[k][2] for k in stats],
+            "Max": [stats[k][3] for k in stats],
+            "Mediana": [stats[k][4] for k in stats],
+            "Liczba próbek": [stats[k][5] for k in stats],
+        })
+
+        csv_df.round(4).to_csv("raport_statystyczny.csv", sep=";", index=False)
+
+        QMessageBox.information(self, "OK", "Eksport raportu zakończony.")
 
     def eksport_pdf(self):
         if self.tabela.rowCount() == 0:
@@ -485,8 +563,8 @@ class Okno(QWidget):
             # Scatter
             plt.figure()
             plt.scatter(masy, procenty)
-            plt.xlabel("masa_probki")
-            plt.ylabel("procent_azbestu")
+            plt.xlabel("masa próbki")
+            plt.ylabel("procentowa zawartość azbestu")
             plt.title("Zależność masy próbki od procentu azbestu")
             plt.grid(True)
 
@@ -507,26 +585,26 @@ class Okno(QWidget):
             # Histogram procent
             plt.figure()
             plt.hist(procenty, bins=20)
-            plt.xlabel("Procent azbestu")
+            plt.xlabel("procentowa zawartość azbestu")
             plt.ylabel("Liczba próbek")
-            plt.title("Histogram procent azbestu")
+            plt.title("Histogram procentowa zawartość azbestu")
             plt.grid(True)
 
-            # Barplot materiał → średni procent azbestu
+            # Barplot materiał → średni procentowa zawartość azbestu
             plt.figure()
 
             df_temp = self.df.copy()
 
             avg_data = (
-                df_temp.groupby("material")["procent_azbestu"]
+                df_temp.groupby("materiał")["procentowa zawartość azbestu"]
                 .mean()
                 .sort_values()
             )
 
             plt.bar(avg_data.index, avg_data.values)
             plt.xlabel("Materiał")
-            plt.ylabel("Średni procent azbestu")
-            plt.title("Średni procent azbestu według materiału")
+            plt.ylabel("Średni procentowa zawartość azbestu")
+            plt.title("Średni procentowa zawartość azbestu według materiału")
             plt.xticks(rotation=45)
             plt.grid(True)
 
